@@ -1,0 +1,1251 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="SocialApp — 친구들의 일상을 공유하는 SNS 피드">
+  <title>SocialApp — 피드</title>
+  <style>
+/* ══════════════════════════════════════
+   🔧 리셋 + 기본 설정
+   ══════════════════════════════════════ */
+*,*::before,*::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html {
+  /* 스크롤바 자리를 항상 예약 → 탭 전환 시 콘텐츠 길이가 달라도 폭이 안 바뀜 */
+  scrollbar-gutter: stable;
+  /* 구형 브라우저 fallback: 세로 스크롤바 항상 표시 */
+  overflow-y: scroll;
+}
+
+body {
+  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: #f0f2f5;
+  color: #1a1a2e;
+  line-height: 1.6;
+  /* 자연어 줄바꿈: 한글·영어 혼용 시 단어 잘림 방지 */
+  word-break: keep-all;
+  overflow-wrap: break-word;
+}
+
+/* 스크린리더 전용 (시각적으로 숨기되 접근성 유지) */
+.sr-only {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden;
+  clip: rect(0,0,0,0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* 키보드 포커스 시각화 — 접근성 필수! */
+:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
+/* 모달이 열리면 뒷배경 스크롤 잠금 (:target 모달 감지) */
+body:has(.detail-modal:target),
+body:has(.new-post-modal:target) {
+  overflow: hidden;
+}
+
+/* 링크 기본 스타일 */
+a { text-decoration: none; color: inherit; }
+
+/* 이미지·미디어 반응형 기본 */
+img, svg, video { max-width: 100%; height: auto; display: block; }
+
+/* 버튼 리셋 */
+button {
+  font: inherit;
+  cursor: pointer;
+  border: none;
+  background: none;
+}
+
+/* 리스트 리셋 */
+ul, ol { list-style: none; }
+
+/* ══════════════════════════════════════
+   🌙 10. 다크모드 (:has)
+   ══════════════════════════════════════ */
+#dark-mode { display: none; }
+
+.toggle-switch {
+  position: relative;
+  width: 44px; height: 24px;
+  background: #ccc;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: background 0.3s;
+  flex-shrink: 0;
+}
+.toggle-switch::after {
+  content: '';
+  position: absolute;
+  top: 3px; left: 3px;
+  width: 18px; height: 18px;
+  background: #fff;
+  border-radius: 50%;
+  transition: transform 0.3s;
+}
+
+/* 체크 시 토글 이동 */
+#dark-mode:checked + .site-header .toggle-switch { background: #3b82f6; }
+#dark-mode:checked + .site-header .toggle-switch::after { transform: translateX(20px); }
+
+/* :has() — 전체 다크 전환 */
+body:has(#dark-mode:checked) { background: #0d1117; color: #e6edf3; }
+body:has(#dark-mode:checked) .site-header { background: #161b22; border-color: #30363d; }
+body:has(#dark-mode:checked) .post-card,
+body:has(#dark-mode:checked) .aside-panel,
+body:has(#dark-mode:checked) .sidebar,
+body:has(#dark-mode:checked) .stories { background: #161b22; border-color: #30363d; }
+body:has(#dark-mode:checked) .search-input { background: #21262d; border-color: #30363d; color: #e6edf3; }
+body:has(#dark-mode:checked) .mobile-nav { background: #161b22; border-color: #30363d; }
+body:has(#dark-mode:checked) .dropdown-menu { background: #21262d; border-color: #30363d; }
+body:has(#dark-mode:checked) .sidebar a { color: #aaa; }
+body:has(#dark-mode:checked) .sidebar a:hover { background: rgba(255,255,255,.06); color: #fff; }
+body:has(#dark-mode:checked) .tab-bar label { color: #888; }
+body:has(#dark-mode:checked) .story-name { color: #aaa; }
+body:has(#dark-mode:checked) .post-text { color: #ccc; }
+body:has(#dark-mode:checked) .detail-box { background: #161b22; color: #e6edf3; }
+body:has(#dark-mode:checked) .detail-content { background: #161b22; }
+body:has(#dark-mode:checked) .detail-comment { background: #21262d; }
+body:has(#dark-mode:checked) .comments-toggle { color: #60a5fa; }
+body:has(#dark-mode:checked) .modal-box { background: #161b22; color: #e6edf3; }
+body:has(#dark-mode:checked) .modal-input,
+body:has(#dark-mode:checked) .modal-textarea { background: #21262d; border-color: #30363d; color: #e6edf3; }
+body:has(#dark-mode:checked) .explore-item { background: #21262d; }
+body:has(#dark-mode:checked) .notif-item { border-color: #30363d; }
+body:has(#dark-mode:checked) .post-menu-list { background: #21262d; border-color: #30363d; }
+body:has(#dark-mode:checked) .more-link { color: #60a5fa; }
+
+/* ══════════════════════════════════════
+   🧭 1. 헤더 (sticky)
+   ══════════════════════════════════════ */
+.site-header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: #fff;
+  border-bottom: 1px solid #e5e7eb;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px;
+  height: 58px;
+}
+
+.site-logo {
+  font-weight: 800;
+  font-size: 0.95rem;
+  color: #3b82f6;
+  white-space: nowrap;
+}
+
+/* 검색 폼 */
+.search-form { flex: 1; max-width: 120px; }
+.search-input {
+  width: 100%;
+  padding: 8px 14px;
+  border: 1px solid #ddd;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.search-input:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59,130,246,0.12);
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-left: auto;
+}
+
+/* 알림 뱃지 */
+.icon-button {
+  position: relative;
+  font-size: 1.25rem;
+  padding: 4px;
+  background: none;
+  border: none;
+}
+.notification-badge {
+  position: absolute;
+  top: -6px; right: -8px;
+  background: #ef4444;
+  color: #fff;
+  font-size: 0.6rem;
+  font-weight: 700;
+  min-width: 17px; height: 17px;
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+}
+
+/* 프로필 드롭다운 */
+.profile-dropdown { position: relative; }
+.profile-avatar {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  cursor: pointer;
+  /* 접근성: 배경 이미지 대체 텍스트 역할 */
+}
+.dropdown-menu {
+  position: absolute;
+  top: calc(100% + 6px); right: 0;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  min-width: 155px;
+  padding: 5px 0;
+  display: none;
+  z-index: 200;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+}
+.profile-dropdown:hover .dropdown-menu,
+.profile-dropdown:focus-within .dropdown-menu { display: block; }
+.dropdown-menu a {
+  display: block;
+  padding: 8px 15px;
+  font-size: 0.88rem;
+  color: #555;
+}
+.dropdown-menu a:hover { background: #f0f2f5; color: #1a1a2e; }
+
+/* ══════════════════════════════════════
+   📐 2. 3열 반응형 레이아웃
+   ══════════════════════════════════════ */
+.site-layout {
+  display: grid;
+  grid-template-columns: 1fr; /* 모바일 기본: 1열 */
+  gap: 22px;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 10px;
+}
+
+/* ══════════════════════════════════════
+   📋 3. 사이드바 (nav)
+   ══════════════════════════════════════ */
+.sidebar {
+  display: none; /* 모바일 기본: 숨김 → 데스크톱에서 표시 */
+  position: sticky;
+  top: 76px;
+  align-self: start;
+  background: #fff;
+  border-radius: 14px;
+  padding: 14px 0;
+  border: 1px solid #e5e7eb;
+}
+.sidebar-nav a {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 11px 18px;
+  font-size: 0.92rem;
+  color: #555;
+  transition: background 0.2s, color 0.2s;
+  position: relative;
+}
+.sidebar-nav a:hover { background: #f0f2f5; color: #1a1a2e; }
+.sidebar-nav a[aria-current="page"] { color: #3b82f6; font-weight: 700; }
+.sidebar-nav a[aria-current="page"]::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 8px; bottom: 8px;
+  width: 3px;
+  background: #3b82f6;
+  border-radius: 0 3px 3px 0;
+}
+.nav-icon { font-size: 1.15rem; width: 22px; text-align: center; }
+
+/* ══════════════════════════════════════
+   🔀 4. 피드 탭 (CSS-only radio)
+   ══════════════════════════════════════ */
+.feed-section > input[type="radio"] { display: none; }
+
+/* 가운데 grid 셀: min-width:0 → 안의 가로 스크롤(스토리)이 컬럼을 밀어내지 않음
+   (grid/flex 아이템의 기본 min-width:auto는 콘텐츠 크기까지 커지므로 0으로 막음) */
+.feed-section { min-width: 0; padding-bottom: 68px; /* 모바일 하단탭 공간 */ }
+
+.tab-bar {
+  display: flex;
+  border-bottom: 1px solid #e5e7eb;
+  margin-bottom: 18px;
+  background: #fff;
+  border-radius: 14px 14px 0 0;
+  overflow: hidden;
+}
+.tab-bar label {
+  flex: 1;
+  text-align: center;
+  padding: 13px 0;
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: #888;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: color 0.2s, border-color 0.2s;
+}
+.tab-bar label:hover { color: #1a1a2e; }
+
+/* 선택된 탭 스타일 */
+#tab-feed:checked   ~ .tab-bar [for="tab-feed"],
+#tab-explore:checked ~ .tab-bar [for="tab-explore"],
+#tab-notif:checked   ~ .tab-bar [for="tab-notif"] {
+  color: #3b82f6;
+  border-bottom-color: #3b82f6;
+}
+
+/* 패널 전환 */
+.tab-panel { display: none; }
+#tab-feed:checked   ~ .panel-feed,
+#tab-explore:checked ~ .panel-explore,
+#tab-notif:checked   ~ .panel-notif { display: block; }
+
+/* ── 탐색 이미지 그리드 ── */
+.explore-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  gap: 6px;
+}
+.explore-item {
+  aspect-ratio: 1;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  overflow: hidden;
+  position: relative;
+}
+.explore-item::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0);
+  transition: background 0.3s;
+}
+.explore-item:hover::after { background: rgba(0,0,0,0.3); }
+.explore-item span { transition: transform 0.4s; }
+.explore-item:hover span { transform: scale(1.15); }
+
+/* ── 알림 목록 ── */
+.notif-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid #f0f0f0;
+  font-size: 0.88rem;
+}
+.notif-item:last-child { border-bottom: none; }
+.notif-avatar {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+}
+.notif-text { flex: 1; color: #555; }
+.notif-text strong { color: #1a1a2e; }
+.notif-time { font-size: 0.78rem; color: #aaa; white-space: nowrap; }
+
+/* ══════════════════════════════════════
+   📖 5. 스토리 (가로 스크롤)
+   ══════════════════════════════════════ */
+.stories {
+  display: flex;
+  gap: 14px;
+  overflow-x: auto;
+  padding: 14px;
+  background: #fff;
+  border-radius: 14px;
+  border: 1px solid #e5e7eb;
+  margin-bottom: 18px;
+  scrollbar-width: thin;
+}
+.story-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0; /* 찌그러지지 않게 */
+  cursor: pointer;
+}
+.story-avatar {
+  width: 50px; height: 50px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  /* 그라데이션 테두리 트릭 */
+  border: 3px solid transparent;
+  background-image: linear-gradient(#fff, #fff),
+                    linear-gradient(135deg, #f58529, #dd2a7b, #8134af);
+  background-origin: border-box;
+  background-clip: padding-box, border-box;
+  transition: transform 0.2s;
+}
+.story-item:hover .story-avatar { transform: scale(1.1); }
+.story-name {
+  font-size: 0.72rem;
+  color: #666;
+  max-width: 62px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: center;
+}
+
+/* ══════════════════════════════════════
+   📰 6. 포스트 카드
+   ══════════════════════════════════════ */
+.post-card {
+  background: #fff;
+  border-radius: 14px;
+  border: 1px solid #e5e7eb;
+  margin-bottom: 18px;
+  overflow: hidden;
+}
+
+/* 포스트 헤더 */
+.post-header {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 12px 14px;
+}
+.post-avatar {
+  width: 38px; height: 38px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+}
+.post-user-info { flex: 1; }
+.post-username { font-weight: 700; font-size: 0.92rem; }
+.post-timestamp { font-size: 0.75rem; color: #999; }
+
+/* ··· 드롭다운 */
+.post-menu { position: relative; }
+.post-menu-button {
+  font-size: 1.1rem;
+  color: #999;
+  padding: 4px 8px;
+}
+.post-menu-button:hover { color: #333; }
+.post-menu-list {
+  position: absolute;
+  top: 100%; right: 0;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  min-width: 140px;
+  padding: 4px 0;
+  display: none;
+  z-index: 50;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.08);
+}
+.post-menu:hover .post-menu-list,
+.post-menu:focus-within .post-menu-list { display: block; }
+.post-menu-list a {
+  display: block;
+  padding: 8px 14px;
+  font-size: 0.84rem;
+  color: #555;
+}
+.post-menu-list a:hover { background: #f0f2f5; }
+
+/* 이미지 줌 */
+.post-image-wrap {
+  overflow: hidden;
+  height: 220px;
+}
+.post-image {
+  width: 100%; height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 3.5rem;
+  transition: transform 0.5s ease;
+}
+.post-image-wrap:hover .post-image { transform: scale(1.05); }
+
+/* 액션 바 */
+.post-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 8px 14px;
+}
+.action-button, .action-share {
+  font-size: 1.2rem;
+  padding: 3px;
+  color: inherit;
+  transition: transform 0.2s, color 0.2s;
+}
+.action-button:hover, .action-share:hover { transform: scale(1.2); color: #3b82f6; }
+.action-share { margin-left: auto; }
+
+/* CSS 좋아요 토글 */
+.like-checkbox { display: none; }
+.like-label {
+  font-size: 1.25rem;
+  cursor: pointer;
+  user-select: none;
+  color: #555;
+  transition: transform 0.2s;
+}
+@keyframes heartPulse {
+  0%   { transform: scale(1); }
+  25%  { transform: scale(1.35); }
+  50%  { transform: scale(1); }
+  75%  { transform: scale(1.15); }
+  100% { transform: scale(1); }
+}
+.like-checkbox:checked + .like-label {
+  color: #ef4444;
+  animation: heartPulse 0.45s ease;
+}
+
+/* 본문 + 말줄임 */
+.post-body { padding: 5px 14px 12px; }
+.post-likes { font-weight: 700; font-size: 0.88rem; margin-bottom: 3px; }
+.post-text {
+  font-size: 0.88rem;
+  color: #444;
+  line-height: 1.5;
+  /* 2줄 말줄임 */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.more-link {
+  display: inline-block;
+  padding: 2px 14px 10px;
+  font-size: 0.84rem;
+  color: #3b82f6;
+  font-weight: 600;
+}
+.more-link:hover { text-decoration: underline; }
+.comment-count-link {
+  display: inline-block;
+  padding: 2px 14px 10px;
+  font-size: 0.84rem;
+  color: #999;
+}
+
+/* ══════════════════════════════════════
+   🔍 7. 포스트 상세 모달 (:target)
+   ══════════════════════════════════════ */
+.detail-modal {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+}
+.detail-modal:target {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.detail-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.65);
+}
+.detail-box {
+  position: relative;
+  z-index: 1001;
+  background: #fff;
+  border-radius: 16px;
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: 1fr; /* 모바일 기본: 1열 (이미지 위 / 내용 아래) */
+  width: 95vw;
+  max-width: 95vw;
+  height: auto;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+}
+.detail-image {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 3rem;
+  /* 모바일 기본: 위에 쌓이므로 고정 높이 + 줄어들지 않게 */
+  height: 200px;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+.detail-content {
+  display: flex;
+  flex-direction: column;
+  /* 부모(고정 높이)를 꽉 채움 → 내부 .detail-body가 스크롤 영역이 됨 */
+  height: 100%;
+  min-height: 0; /* flex 자식 overflow 스크롤이 작동하려면 필요 */
+  background: #fff;
+}
+.detail-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px;
+  border-bottom: 1px solid #e5e7eb;
+}
+.detail-avatar {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+}
+.detail-username { font-weight: 700; font-size: 0.92rem; }
+.detail-close {
+  margin-left: auto;
+  font-size: 1.3rem;
+  color: #999;
+  padding: 4px 8px;
+}
+.detail-close:hover { color: #333; }
+.detail-body {
+  padding: 16px;
+  flex: 1;
+  overflow-y: auto;
+}
+.detail-full-text {
+  font-size: 0.9rem;
+  line-height: 1.6;
+  margin-bottom: 16px;
+  color: #333;
+}
+.detail-comments-title {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #888;
+  margin-bottom: 10px;
+  padding-top: 12px;
+  border-top: 1px solid #e5e7eb;
+}
+.detail-comment {
+  display: flex;
+  gap: 9px;
+  align-items: flex-start;
+  padding: 8px 0;
+  font-size: 0.85rem;
+}
+.detail-comment-avatar {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  background: #e5e7eb;
+}
+.detail-comment-name { font-weight: 700; margin-right: 5px; }
+
+/* 댓글 아코디언 (CSS-only "더보기") */
+.comments-more { display: none; } /* 체크박스 숨김 */
+.comments-extra {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.4s ease;
+}
+.comments-more:checked ~ .comments-extra { max-height: 600px; }
+.comments-toggle {
+  display: inline-block;
+  margin-top: 6px;
+  font-size: 0.82rem;
+  color: #3b82f6;
+  font-weight: 600;
+  cursor: pointer;
+}
+.comments-toggle:hover { text-decoration: underline; }
+/* 펼쳐지면 "더보기" → "접기" 텍스트 전환 */
+.comments-toggle .label-open { display: inline; }
+.comments-toggle .label-close { display: none; }
+.comments-more:checked ~ .comments-toggle .label-open { display: none; }
+.comments-more:checked ~ .comments-toggle .label-close { display: inline; }
+
+/* ══════════════════════════════════════
+   ✏️ 8. 새 글 모달 (:target)
+   ══════════════════════════════════════ */
+.new-post-modal {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+}
+.new-post-modal:target { display: block; }
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.55);
+}
+.modal-box {
+  position: fixed;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  background: #fff;
+  border-radius: 16px;
+  padding: 28px;
+  width: 460px;
+  max-width: 92%;
+  z-index: 1001;
+}
+.modal-close {
+  position: absolute;
+  top: 12px; right: 14px;
+  font-size: 1.3rem;
+  color: #999;
+}
+.modal-close:hover { color: #333; }
+.modal-box h2 { font-size: 1.1rem; margin-bottom: 14px; }
+.modal-input, .modal-textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1.5px solid #ddd;
+  border-radius: 8px;
+  font: inherit;
+  font-size: 0.9rem;
+  margin-bottom: 10px;
+  transition: border-color 0.2s;
+}
+.modal-input:focus, .modal-textarea:focus {
+  outline: none;
+  border-color: #3b82f6;
+}
+.modal-textarea { height: 100px; resize: vertical; }
+.modal-upload {
+  width: 100%; height: 70px;
+  border: 2px dashed #ddd;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #aaa;
+  font-size: 0.88rem;
+  margin-bottom: 14px;
+}
+.modal-submit {
+  width: 100%;
+  padding: 11px;
+  background: #3b82f6;
+  color: #fff;
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 0.95rem;
+  transition: background 0.3s, transform 0.3s, box-shadow 0.3s;
+}
+.modal-submit:hover {
+  background: #2563eb;
+  transform: scale(1.02);
+  box-shadow: 0 6px 18px rgba(59,130,246,0.3);
+}
+
+/* ══════════════════════════════════════
+   👥 9. 우측 패널 탭
+   ══════════════════════════════════════ */
+.aside-panel {
+  display: none; /* 모바일 기본: 숨김 → 태블릿+에서 표시 */
+  position: sticky;
+  top: 76px;
+  align-self: start;
+  background: #fff;
+  border-radius: 14px;
+  border: 1px solid #e5e7eb;
+  overflow: hidden;
+}
+.aside-panel > input[type="radio"] { display: none; }
+.aside-tab-bar {
+  display: flex;
+  border-bottom: 1px solid #e5e7eb;
+}
+.aside-tab-bar label {
+  flex: 1;
+  text-align: center;
+  padding: 11px 0;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #888;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: color 0.2s, border-color 0.2s;
+}
+#aside-suggest:checked ~ .aside-tab-bar [for="aside-suggest"],
+#aside-trend:checked ~ .aside-tab-bar [for="aside-trend"] {
+  color: #3b82f6;
+  border-bottom-color: #3b82f6;
+}
+.aside-tab-panel { display: none; padding: 14px 16px; }
+#aside-suggest:checked ~ .panel-suggest,
+#aside-trend:checked ~ .panel-trend { display: block; }
+
+.suggest-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 0;
+}
+.suggest-item:not(:last-child) { border-bottom: 1px solid #f0f0f0; }
+.suggest-avatar {
+  width: 34px; height: 34px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.95rem;
+}
+.suggest-name { font-size: 0.85rem; font-weight: 600; flex: 1; }
+.follow-button {
+  padding: 5px 12px;
+  background: #3b82f6;
+  color: #fff;
+  border-radius: 7px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  margin-left: auto;
+  transition: background 0.3s, transform 0.3s, box-shadow 0.3s;
+}
+.follow-button:hover {
+  background: #2563eb;
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(59,130,246,0.3);
+}
+.trend-tag {
+  display: inline-block;
+  padding: 5px 12px;
+  margin: 3px;
+  background: #eff6ff;
+  color: #3b82f6;
+  border-radius: 16px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  transition: background 0.2s;
+}
+.trend-tag:hover { background: #dbeafe; }
+
+/* ══════════════════════════════════════
+   📱 11. 모바일 하단 네비
+   ══════════════════════════════════════ */
+.mobile-nav {
+  display: block; /* 모바일 기본: 표시 → 태블릿+에서 숨김 */
+  position: fixed;
+  bottom: 0; left: 0;
+  width: 100%;
+  background: #fff;
+  border-top: 1px solid #e5e7eb;
+  padding: 7px 0 max(11px, env(safe-area-inset-bottom));
+  z-index: 100;
+}
+.mobile-nav-inner {
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+}
+.mobile-nav-item {
+  font-size: 1.35rem;
+  color: #999;
+  padding: 5px 10px;
+  background: none;
+  border: none;
+  transition: color 0.2s;
+}
+.mobile-nav-item[aria-current="page"] { color: #3b82f6; }
+.mobile-nav-item:hover { color: #3b82f6; }
+
+/* ══════════════════════════════════════
+   📱 반응형 미디어쿼리 (모바일 퍼스트)
+   기본 = 모바일 → min-width로 키워나감
+   ══════════════════════════════════════ */
+
+/* ── 태블릿+ (768px↑): 우측 패널 등장 → 2열 ── */
+@media (min-width: 768px) {
+  .site-layout {
+    grid-template-columns: 1fr 290px;
+    gap: 22px;
+    padding: 18px 24px;
+  }
+  .aside-panel { display: block; }   /* 우측 패널 표시 */
+  .mobile-nav { display: none; }     /* 하단 탭 숨김 */
+  .feed-section { padding-bottom: 0; }
+
+  /* 헤더·검색 키우기 */
+  .site-header { gap: 14px; padding: 0 24px; }
+  .site-logo { font-size: 1.1rem; }
+  .search-form { max-width: 220px; }
+  .search-input { font-size: 0.88rem; }
+
+  /* 스토리·이미지·갤러리 키우기 */
+  .post-image-wrap { height: 300px; }
+  .story-avatar { width: 58px; height: 58px; font-size: 1.5rem; }
+  .explore-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
+
+  /* 모달: 2열 + 고정 높이 (이미지 안 늘어남) */
+  .detail-box {
+    grid-template-columns: 1fr 1fr;
+    width: 800px;
+    height: 540px;
+    max-height: 85vh;
+    overflow-y: hidden;
+  }
+  .detail-image { height: 100%; font-size: 5rem; }
+}
+
+/* ── 데스크톱+ (1024px↑): 사이드바 등장 → 3열 ── */
+@media (min-width: 1024px) {
+  .site-layout { grid-template-columns: 210px 1fr 290px; }
+  .sidebar { display: block; }       /* 사이드바 표시 */
+  .search-form { max-width: 340px; }
+}
+  </style>
+</head>
+<body>
+
+<!-- 다크모드 체크박스 (body 직속 → :has 감지용) -->
+<input type="checkbox" id="dark-mode" class="sr-only">
+
+<!-- ══ 1. 헤더 ══ -->
+<header class="site-header">
+  <a href="#" class="site-logo" aria-label="SocialApp 홈">📸 SocialApp</a>
+
+  <form class="search-form" role="search" action="#" onsubmit="return false">
+    <label for="search" class="sr-only">검색</label>
+    <input type="search" id="search" class="search-input" placeholder="검색...">
+  </form>
+
+  <label for="dark-mode" class="toggle-switch" role="switch" aria-label="다크모드 전환"></label>
+
+  <div class="header-actions">
+    <button class="icon-button" aria-label="알림 3개">
+      <span aria-hidden="true">🔔</span>
+      <span class="notification-badge" aria-hidden="true">3</span>
+    </button>
+
+    <div class="profile-dropdown">
+      <button class="profile-avatar" aria-label="프로필 메뉴" aria-haspopup="true">
+        <span class="sr-only">프로필</span>
+      </button>
+      <nav class="dropdown-menu" aria-label="프로필 메뉴">
+        <a href="#">👤 내 프로필</a>
+        <a href="#">⚙️ 설정</a>
+        <a href="#">🚪 로그아웃</a>
+      </nav>
+    </div>
+  </div>
+</header>
+
+<!-- ══ 본문 ══ -->
+<div class="site-layout">
+
+  <!-- ══ 3. 사이드바 ══ -->
+  <aside class="sidebar" aria-label="사이드 메뉴">
+    <nav class="sidebar-nav" aria-label="메인 네비게이션">
+      <a href="#" aria-current="page"><span class="nav-icon" aria-hidden="true">🏠</span>홈</a>
+      <a href="#new-post"><span class="nav-icon" aria-hidden="true">➕</span>새 글</a>
+      <a href="#"><span class="nav-icon" aria-hidden="true">💬</span>메시지</a>
+      <a href="#"><span class="nav-icon" aria-hidden="true">👤</span>프로필</a>
+    </nav>
+  </aside>
+
+  <!-- ══ 피드 (main) ══ -->
+  <main class="feed-section">
+    <!-- 4. 탭 라디오 -->
+    <input type="radio" name="feed-tab" id="tab-feed" checked>
+    <input type="radio" name="feed-tab" id="tab-explore">
+    <input type="radio" name="feed-tab" id="tab-notif">
+    <div class="tab-bar" role="tablist">
+      <label for="tab-feed" role="tab">📷 피드</label>
+      <label for="tab-explore" role="tab">🔍 탐색</label>
+      <label for="tab-notif" role="tab">🔔 알림</label>
+    </div>
+
+    <!-- ═══ 피드 패널 ═══ -->
+    <div class="tab-panel panel-feed" role="tabpanel">
+
+      <!-- 5. 스토리 -->
+      <section class="stories" aria-label="스토리">
+        <h2 class="sr-only">스토리 목록</h2>
+        <article class="story-item"><div class="story-avatar" role="img" aria-label="내 스토리">😊</div><span class="story-name">내 스토리</span></article>
+        <article class="story-item"><div class="story-avatar" role="img" aria-label="고양이러버">🐱</div><span class="story-name">고양이러버</span></article>
+        <article class="story-item"><div class="story-avatar" role="img" aria-label="기타치는개발자">🎸</div><span class="story-name">기타치는개발자</span></article>
+        <article class="story-item"><div class="story-avatar" role="img" aria-label="맛집탐방">🍕</div><span class="story-name">맛집탐방</span></article>
+        <article class="story-item"><div class="story-avatar" role="img" aria-label="독서모임">📚</div><span class="story-name">독서모임</span></article>
+        <article class="story-item"><div class="story-avatar" role="img" aria-label="러닝크루서울">🏃</div><span class="story-name">러닝크루서울</span></article>
+        <article class="story-item"><div class="story-avatar" role="img" aria-label="겜덕후">🎮</div><span class="story-name">겜덕후</span></article>
+        <article class="story-item"><div class="story-avatar" role="img" aria-label="여행일기">✈️</div><span class="story-name">여행일기</span></article>
+        <article class="story-item"><div class="story-avatar" role="img" aria-label="그림쟁이">🎨</div><span class="story-name">그림쟁이</span></article>
+      </section>
+
+      <!-- ══ 6. 포스트 1 ══ -->
+      <article class="post-card">
+        <header class="post-header">
+          <div class="post-avatar" style="background:linear-gradient(135deg,#f093fb,#f5576c)" role="img" aria-label="고양이러버 프로필">🐱</div>
+          <div class="post-user-info">
+            <strong class="post-username">고양이러버</strong>
+            <time class="post-timestamp" datetime="2026-06-24T07:00">2시간 전</time>
+          </div>
+          <div class="post-menu">
+            <button class="post-menu-button" aria-label="게시글 옵션" aria-haspopup="true">···</button>
+            <div class="post-menu-list" role="menu">
+              <a href="#" role="menuitem">🔗 링크 복사</a>
+              <a href="#" role="menuitem">🚫 숨기기</a>
+              <a href="#" role="menuitem">⚠️ 신고</a>
+            </div>
+          </div>
+        </header>
+
+        <figure class="post-image-wrap">
+          <div class="post-image" style="background:linear-gradient(135deg,#ffecd2,#fcb69f)" role="img" aria-label="고양이 사진">🐈</div>
+        </figure>
+
+        <div class="post-actions">
+          <input type="checkbox" id="like-1" class="like-checkbox">
+          <label for="like-1" class="like-label" aria-label="좋아요">♡</label>
+          <a href="#post-1" class="action-button" aria-label="댓글 보기">💬</a>
+          <a href="#post-1" class="action-button action-share" aria-label="게시글 열기">↗</a>
+        </div>
+
+        <div class="post-body">
+          <p class="post-likes">좋아요 128개</p>
+          <p class="post-text"><strong>고양이러버</strong> 오늘 우리 냥이가 너무 귀여웠다 🐾 역시 고양이는 사랑이야. 아침에 일어나자마자 얼굴 위에 올라와서 깨웠는데 그 표정이 너무 웃겼음 ㅋㅋㅋ 다음에 영상으로 찍어야지</p>
+        </div>
+        <a href="#post-1" class="more-link">더 보기</a>
+        <a href="#post-1" class="comment-count-link">💬 댓글 6개 보기</a>
+      </article>
+
+      <!-- ══ 포스트 2 ══ -->
+      <article class="post-card">
+        <header class="post-header">
+          <div class="post-avatar" style="background:linear-gradient(135deg,#667eea,#764ba2)" role="img" aria-label="기타치는개발자 프로필">🎸</div>
+          <div class="post-user-info">
+            <strong class="post-username">기타치는개발자</strong>
+            <time class="post-timestamp" datetime="2026-06-24T04:00">5시간 전</time>
+          </div>
+          <div class="post-menu">
+            <button class="post-menu-button" aria-label="게시글 옵션">···</button>
+            <div class="post-menu-list" role="menu"><a href="#" role="menuitem">🔗 링크 복사</a><a href="#" role="menuitem">🚫 숨기기</a><a href="#" role="menuitem">⚠️ 신고</a></div>
+          </div>
+        </header>
+        <figure class="post-image-wrap"><div class="post-image" style="background:linear-gradient(135deg,#a8edea,#fed6e3)" role="img" aria-label="코딩 화면">💻</div></figure>
+        <div class="post-actions">
+          <input type="checkbox" id="like-2" class="like-checkbox"><label for="like-2" class="like-label" aria-label="좋아요">♡</label>
+          <a href="#post-2" class="action-button" aria-label="댓글 보기">💬</a>
+          <a href="#post-2" class="action-button action-share" aria-label="게시글 열기">↗</a>
+        </div>
+        <div class="post-body">
+          <p class="post-likes">좋아요 89개</p>
+          <p class="post-text"><strong>기타치는개발자</strong> CSS 캡스톤 드디어 완성 🎉 position부터 미디어쿼리까지 전부 다 썼다. 특히 :target으로 모달 만드는 게 제일 재밌었음. 다크모드까지 :has()로 구현해봤는데 진짜 JS 없이도 되는 게 신기하다</p>
+        </div>
+        <a href="#post-2" class="more-link">더 보기</a>
+        <a href="#post-2" class="comment-count-link">💬 댓글 2개 보기</a>
+      </article>
+
+      <!-- ══ 포스트 3 ══ -->
+      <article class="post-card">
+        <header class="post-header">
+          <div class="post-avatar" style="background:linear-gradient(135deg,#4facfe,#00f2fe)" role="img" aria-label="여행일기 프로필">✈️</div>
+          <div class="post-user-info">
+            <strong class="post-username">여행일기</strong>
+            <time class="post-timestamp" datetime="2026-06-23">어제</time>
+          </div>
+          <div class="post-menu">
+            <button class="post-menu-button" aria-label="게시글 옵션">···</button>
+            <div class="post-menu-list" role="menu"><a href="#" role="menuitem">🔗 링크 복사</a><a href="#" role="menuitem">🚫 숨기기</a><a href="#" role="menuitem">⚠️ 신고</a></div>
+          </div>
+        </header>
+        <figure class="post-image-wrap"><div class="post-image" style="background:linear-gradient(135deg,#43e97b,#38f9d7)" role="img" aria-label="산 풍경">🗻</div></figure>
+        <div class="post-actions">
+          <input type="checkbox" id="like-3" class="like-checkbox"><label for="like-3" class="like-label" aria-label="좋아요">♡</label>
+          <a href="#post-3" class="action-button" aria-label="댓글 보기">💬</a>
+          <a href="#post-3" class="action-button action-share" aria-label="게시글 열기">↗</a>
+        </div>
+        <div class="post-body">
+          <p class="post-likes">좋아요 256개</p>
+          <p class="post-text"><strong>여행일기</strong> 후쿠오카 여행 2일차 🇯🇵 하카타 라멘 먹고 오호리 공원 산책. 날씨가 완벽했다! 텐진 지하상가도 구경하고 캐널시티에서 분수쇼 봤는데 진짜 볼거리 많은 도시</p>
+        </div>
+        <a href="#post-3" class="more-link">더 보기</a>
+        <a href="#post-3" class="comment-count-link">💬 댓글 2개 보기</a>
+      </article>
+    </div>
+
+    <!-- ═══ 탐색 패널 ═══ -->
+    <section class="tab-panel panel-explore" role="tabpanel" aria-label="탐색">
+      <h2 class="sr-only">탐색 갤러리</h2>
+      <div class="explore-grid">
+        <div class="explore-item" style="background:linear-gradient(135deg,#f5af19,#f12711)"><span aria-hidden="true">🏔️</span></div>
+        <div class="explore-item" style="background:linear-gradient(135deg,#667eea,#764ba2)"><span aria-hidden="true">🎸</span></div>
+        <div class="explore-item" style="background:linear-gradient(135deg,#43e97b,#38f9d7)"><span aria-hidden="true">🌿</span></div>
+        <div class="explore-item" style="background:linear-gradient(135deg,#fa709a,#fee140)"><span aria-hidden="true">🍰</span></div>
+        <div class="explore-item" style="background:linear-gradient(135deg,#a8edea,#fed6e3)"><span aria-hidden="true">🐶</span></div>
+        <div class="explore-item" style="background:linear-gradient(135deg,#ffecd2,#fcb69f)"><span aria-hidden="true">☕</span></div>
+        <div class="explore-item" style="background:linear-gradient(135deg,#4facfe,#00f2fe)"><span aria-hidden="true">🏄</span></div>
+        <div class="explore-item" style="background:linear-gradient(135deg,#f093fb,#f5576c)"><span aria-hidden="true">🎨</span></div>
+        <div class="explore-item" style="background:linear-gradient(135deg,#30cfd0,#330867)"><span aria-hidden="true">🌌</span></div>
+      </div>
+    </section>
+
+    <!-- ═══ 알림 패널 ═══ -->
+    <section class="tab-panel panel-notif" role="tabpanel" aria-label="알림">
+      <h2 class="sr-only">알림 목록</h2>
+      <div class="notif-item"><div class="notif-avatar" style="background:#ffe0e6" aria-hidden="true">🐱</div><p class="notif-text"><strong>고양이러버</strong>님이 게시물을 좋아합니다.</p><time class="notif-time">2시간</time></div>
+      <div class="notif-item"><div class="notif-avatar" style="background:#d4f4dd" aria-hidden="true">🎸</div><p class="notif-text"><strong>기타치는개발자</strong>님이 댓글을 남겼습니다.</p><time class="notif-time">5시간</time></div>
+      <div class="notif-item"><div class="notif-avatar" style="background:#dbeafe" aria-hidden="true">✈️</div><p class="notif-text"><strong>여행일기</strong>님이 팔로우하기 시작했습니다.</p><time class="notif-time">어제</time></div>
+      <div class="notif-item"><div class="notif-avatar" style="background:#fef3c7" aria-hidden="true">🍕</div><p class="notif-text"><strong>맛집탐방</strong>님이 스토리에 반응했습니다 🔥</p><time class="notif-time">2일 전</time></div>
+    </section>
+  </main>
+
+  <!-- ══ 9. 우측 패널 ══ -->
+  <aside class="aside-panel" aria-label="추천 및 트렌딩">
+    <input type="radio" name="aside-tab" id="aside-suggest" checked>
+    <input type="radio" name="aside-tab" id="aside-trend">
+    <div class="aside-tab-bar" role="tablist">
+      <label for="aside-suggest" role="tab">추천 친구</label>
+      <label for="aside-trend" role="tab">트렌딩</label>
+    </div>
+    <div class="aside-tab-panel panel-suggest" role="tabpanel">
+      <div class="suggest-item"><div class="suggest-avatar" style="background:#ffe0e6" aria-hidden="true">🎤</div><span class="suggest-name">노래하는사람</span><button class="follow-button">팔로우</button></div>
+      <div class="suggest-item"><div class="suggest-avatar" style="background:#d4f4dd" aria-hidden="true">🌱</div><span class="suggest-name">식물집사</span><button class="follow-button">팔로우</button></div>
+      <div class="suggest-item"><div class="suggest-avatar" style="background:#dbeafe" aria-hidden="true">🏋️</div><span class="suggest-name">헬스덕후</span><button class="follow-button">팔로우</button></div>
+      <div class="suggest-item"><div class="suggest-avatar" style="background:#fef3c7" aria-hidden="true">📷</div><span class="suggest-name">사진작가</span><button class="follow-button">팔로우</button></div>
+    </div>
+    <div class="aside-tab-panel panel-trend" role="tabpanel">
+      <a href="#" class="trend-tag">#CSS캡스톤</a>
+      <a href="#" class="trend-tag">#프론트엔드</a>
+      <a href="#" class="trend-tag">#후쿠오카</a>
+      <a href="#" class="trend-tag">#고양이</a>
+      <a href="#" class="trend-tag">#개발자일상</a>
+      <a href="#" class="trend-tag">#오르미</a>
+      <a href="#" class="trend-tag">#Grid</a>
+      <a href="#" class="trend-tag">#반응형</a>
+    </div>
+  </aside>
+</div>
+
+<!-- ══════ 7. 포스트 상세 모달들 ══════ -->
+
+<div class="detail-modal" id="post-1" role="dialog" aria-label="고양이러버 게시글 상세">
+  <a href="#" class="detail-backdrop" aria-label="닫기"></a>
+  <div class="detail-box">
+    <div class="detail-image" style="background:linear-gradient(135deg,#ffecd2,#fcb69f)" role="img" aria-label="고양이 사진">🐈</div>
+    <div class="detail-content">
+      <header class="detail-header">
+        <div class="detail-avatar" style="background:linear-gradient(135deg,#f093fb,#f5576c)" aria-hidden="true">🐱</div>
+        <strong class="detail-username">고양이러버</strong>
+        <a href="#" class="detail-close" aria-label="닫기">✕</a>
+      </header>
+      <div class="detail-body">
+        <p class="detail-full-text"><strong>고양이러버</strong> 오늘 우리 냥이가 너무 귀여웠다 🐾 역시 고양이는 사랑이야. 아침에 일어나자마자 얼굴 위에 올라와서 깨웠는데 그 표정이 너무 웃겼음 ㅋㅋㅋ 다음에 영상으로 찍어야지. 참고로 이름은 "모찌"입니다 🍡</p>
+        <h3 class="detail-comments-title">💬 댓글 6개</h3>
+        <div class="detail-comment"><div class="detail-comment-avatar" aria-hidden="true">🍕</div><p><strong class="detail-comment-name">맛집탐방</strong>너무 귀엽다!! 😍</p></div>
+        <div class="detail-comment"><div class="detail-comment-avatar" aria-hidden="true">🎸</div><p><strong class="detail-comment-name">기타개발자</strong>우리 집 강아지도 소개시켜줘</p></div>
+        <input type="checkbox" id="more-comments-1" class="comments-more">
+        <div class="comments-extra">
+          <div class="detail-comment"><div class="detail-comment-avatar" aria-hidden="true">📚</div><p><strong class="detail-comment-name">독서모임</strong>모찌라니 이름도 귀엽다 😆</p></div>
+          <div class="detail-comment"><div class="detail-comment-avatar" aria-hidden="true">🏃</div><p><strong class="detail-comment-name">러닝크루</strong>다음 영상 기대할게요!</p></div>
+          <div class="detail-comment"><div class="detail-comment-avatar" aria-hidden="true">🎨</div><p><strong class="detail-comment-name">그림쟁이</strong>저희 집 냥이랑 닮았어요 🐈</p></div>
+          <div class="detail-comment"><div class="detail-comment-avatar" aria-hidden="true">✈️</div><p><strong class="detail-comment-name">여행일기</strong>힐링된다 ☺️</p></div>
+        </div>
+        <label for="more-comments-1" class="comments-toggle">
+          <span class="label-open">댓글 4개 더보기 ▾</span>
+          <span class="label-close">접기 ▴</span>
+        </label>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="detail-modal" id="post-2" role="dialog" aria-label="기타치는개발자 게시글 상세">
+  <a href="#" class="detail-backdrop" aria-label="닫기"></a>
+  <div class="detail-box">
+    <div class="detail-image" style="background:linear-gradient(135deg,#a8edea,#fed6e3)" role="img" aria-label="코딩 화면">💻</div>
+    <div class="detail-content">
+      <header class="detail-header">
+        <div class="detail-avatar" style="background:linear-gradient(135deg,#667eea,#764ba2)" aria-hidden="true">🎸</div>
+        <strong class="detail-username">기타치는개발자</strong>
+        <a href="#" class="detail-close" aria-label="닫기">✕</a>
+      </header>
+      <div class="detail-body">
+        <p class="detail-full-text"><strong>기타치는개발자</strong> CSS 캡스톤 드디어 완성 🎉 position부터 미디어쿼리까지 전부 다 썼다. 특히 :target으로 모달 만드는 게 제일 재밌었음. 다크모드까지 :has()로 구현해봤는데 진짜 JS 없이도 되는 게 신기하다. flex랑 grid 차이도 이제 확실히 감이 온다!</p>
+        <h3 class="detail-comments-title">💬 댓글 2개</h3>
+        <div class="detail-comment"><div class="detail-comment-avatar" aria-hidden="true">🐱</div><p><strong class="detail-comment-name">고양이러버</strong>축하해! 🥳 나도 도전해봐야지</p></div>
+        <div class="detail-comment"><div class="detail-comment-avatar" aria-hidden="true">🏃</div><p><strong class="detail-comment-name">러닝크루</strong>나도 빨리 끝내야 하는데...</p></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="detail-modal" id="post-3" role="dialog" aria-label="여행일기 게시글 상세">
+  <a href="#" class="detail-backdrop" aria-label="닫기"></a>
+  <div class="detail-box">
+    <div class="detail-image" style="background:linear-gradient(135deg,#43e97b,#38f9d7)" role="img" aria-label="산 풍경">🗻</div>
+    <div class="detail-content">
+      <header class="detail-header">
+        <div class="detail-avatar" style="background:linear-gradient(135deg,#4facfe,#00f2fe)" aria-hidden="true">✈️</div>
+        <strong class="detail-username">여행일기</strong>
+        <a href="#" class="detail-close" aria-label="닫기">✕</a>
+      </header>
+      <div class="detail-body">
+        <p class="detail-full-text"><strong>여행일기</strong> 후쿠오카 여행 2일차 🇯🇵 하카타 라멘 먹고 오호리 공원 산책. 날씨가 완벽했다! 텐진 지하상가도 구경하고 캐널시티에서 분수쇼 봤는데 진짜 볼거리 많은 도시. 저녁엔 나카스 포장마차에서 라멘 한 그릇 더 먹음 🍜 다음엔 유후인도 가봐야지!</p>
+        <h3 class="detail-comments-title">💬 댓글 2개</h3>
+        <div class="detail-comment"><div class="detail-comment-avatar" aria-hidden="true">🍕</div><p><strong class="detail-comment-name">맛집탐방</strong>나카스 포장마차 라멘 어디야? 🍜</p></div>
+        <div class="detail-comment"><div class="detail-comment-avatar" aria-hidden="true">🎨</div><p><strong class="detail-comment-name">그림쟁이</strong>유후인 강추! 온천 최고야 ♨️</p></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ 8. 새 글 모달 ══ -->
+<div class="new-post-modal" id="new-post" role="dialog" aria-label="새 글 작성">
+  <a href="#" class="modal-backdrop" aria-label="닫기"></a>
+  <div class="modal-box">
+    <a href="#" class="modal-close" aria-label="닫기">✕</a>
+    <h2>📝 새 글 작성</h2>
+    <form onsubmit="return false">
+      <label for="post-title" class="sr-only">제목</label>
+      <input type="text" id="post-title" class="modal-input" placeholder="제목을 입력하세요">
+      <label for="post-content" class="sr-only">본문</label>
+      <textarea id="post-content" class="modal-textarea" placeholder="무슨 생각을 하고 계세요?"></textarea>
+      <div class="modal-upload" aria-label="사진 추가 영역">📷 사진/동영상 추가</div>
+      <button type="submit" class="modal-submit">게시하기</button>
+    </form>
+  </div>
+</div>
+
+<!-- ══ 11. 모바일 하단 탭 ══ -->
+<nav class="mobile-nav" aria-label="모바일 네비게이션">
+  <div class="mobile-nav-inner">
+    <button class="mobile-nav-item" aria-current="page" aria-label="홈">🏠</button>
+    <button class="mobile-nav-item" aria-label="탐색">🔍</button>
+    <button class="mobile-nav-item" aria-label="새 글">➕</button>
+    <button class="mobile-nav-item" aria-label="메시지">💬</button>
+    <button class="mobile-nav-item" aria-label="프로필">👤</button>
+  </div>
+</nav>
+
+</body>
+</html>
