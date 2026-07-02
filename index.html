@@ -3,10 +3,209 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+    <title>실습 프로젝트 모음</title>
+    <style>
+        :root {
+            --bg: #f4f6fb;
+            --card: #ffffff;
+            --border: #e2e6ef;
+            --text: #1f2937;
+            --muted: #6b7280;
+            --accent: #4f46e5;
+            --accent-soft: #eef2ff;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: "Segoe UI", "Apple SD Gothic Neo", sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 40px 20px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 760px;
+        }
+
+        header {
+            margin-bottom: 28px;
+            text-align: center;
+        }
+
+        header h1 {
+            font-size: 1.9rem;
+            font-weight: 700;
+        }
+
+        header p {
+            margin-top: 8px;
+            color: var(--muted);
+            font-size: 0.95rem;
+        }
+
+        .table-wrap {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(31, 41, 55, 0.06);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        thead {
+            background: var(--accent-soft);
+        }
+
+        th, td {
+            padding: 16px 20px;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+
+        th {
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--accent);
+        }
+
+        tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+        tbody tr:hover {
+            background: #fafbff;
+        }
+
+        .project-name {
+            font-weight: 600;
+            font-size: 1.02rem;
+        }
+
+        .project-desc {
+            display: block;
+            margin-top: 4px;
+            font-size: 0.85rem;
+            color: var(--muted);
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .badge.done {
+            background: #dcfce7;
+            color: #15803d;
+        }
+
+        .badge.wip {
+            background: #fef3c7;
+            color: #b45309;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 8px 16px;
+            background: var(--accent);
+            color: #fff;
+            text-decoration: none;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            transition: background 0.15s ease;
+            white-space: nowrap;
+        }
+
+        .btn:hover {
+            background: #4338ca;
+        }
+
+        td.action {
+            text-align: right;
+        }
+
+        footer {
+            margin-top: 20px;
+            text-align: center;
+            color: var(--muted);
+            font-size: 0.8rem;
+        }
+
+        @media (max-width: 560px) {
+            th:nth-child(2), td:nth-child(2) {
+                display: none;
+            }
+            th, td {
+                padding: 14px;
+            }
+        }
+    </style>
 </head>
 <body>
-    <a href="sns_complete.html">sns 실습 완성본 확인하기</a>
-    <a href="movie.html"> 영화 페이지 실습 완성본 확인하기 </a>
+    <div class="container">
+        <header>
+            <h1>실습 프로젝트 모음</h1>
+            <p>HTML/CSS 실습으로 만든 페이지들을 모아 두었습니다.</p>
+        </header>
+
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>프로젝트</th>
+                        <th>상태</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>
+                            <span class="project-name">SNS 페이지</span>
+                            <span class="project-desc">소셜 미디어 UI 실습 완성본</span>
+                        </td>
+                        <td><span class="badge done">완성</span></td>
+                        <td class="action"><a class="btn" href="sns/sns_complete.html">보기</a></td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <span class="project-name">영화 페이지</span>
+                            <span class="project-desc">OTT 스타일 영화 소개 페이지 실습</span>
+                        </td>
+                        <td><span class="badge done">완성</span></td>
+                        <td class="action"><a class="btn" href="movie/movie.html">보기</a></td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <span class="project-name">SNS 페이지 (뼈대)</span>
+                            <span class="project-desc">SNS 레이아웃 구조 실습용 마크업</span>
+                        </td>
+                        <td><span class="badge wip">작업중</span></td>
+                        <td class="action"><a class="btn" href="sns/sns.html">보기</a></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <footer>EST SNS 실습 &middot; 2026</footer>
+    </div>
 </body>
 </html>
